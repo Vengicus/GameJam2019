@@ -17,10 +17,16 @@ public class MapImporter : MonoBehaviour
 
     private int[,] tiles;
 
+
     void Awake()
     {
+        fileNameToLoad = exampleLevel.txt;
         tiles = Load(Application.dataPath + "\\" + fileNameToLoad);
-        BuildMap();
+
+        mapWidth = 51;
+        mapHeight = 16;
+
+    BuildMap();
     }
 
     void BuildMap()
@@ -40,6 +46,12 @@ public class MapImporter : MonoBehaviour
                 if (tiles[i, j] == 1)
                 {
                     GameObject TilePrefab = TilePrefab = Instantiate(Wall, new Vector3(j - mapWidth, mapHeight - i, 1), Quaternion.identity) as GameObject;
+                    TilePrefab.transform.parent = GameObject.FindGameObjectWithTag("Room").transform;
+                }
+                else
+                if (tiles[i, j] == 2)
+                {
+                    GameObject TilePrefab = TilePrefab = Instantiate(Door, new Vector3(j - mapWidth, mapHeight - i, 2), Quaternion.identity) as GameObject;
                     TilePrefab.transform.parent = GameObject.FindGameObjectWithTag("Room").transform;
                 }
             }
