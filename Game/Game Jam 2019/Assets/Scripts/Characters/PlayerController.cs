@@ -5,6 +5,7 @@ using UnityEngine;
 public class PlayerController : MonoBehaviorExtended
 {
     protected float MovementSpeed = 3;
+    public GameObject bullet;
     
     public PlayerWeapon MirrorShield
     {
@@ -47,8 +48,24 @@ public class PlayerController : MonoBehaviorExtended
             // Button 1
             if (Inputs.ShootingHorizontalInput != 0 || Inputs.ShootingVerticalInput != 0)
             {
+                Vector2 bulletPos = transform.position;
+                // generate bullets away from character sprite
+                bulletPos.x += 1.25f * Inputs.ShootingHorizontalInput;
+                bulletPos.y += 1.25f * -1f * Inputs.ShootingVerticalInput;
+                // reduces distance for diagonals
+                if (Inputs.ShootingHorizontalInput != 0 && Inputs.ShootingVerticalInput != 0)
+                {
+                    bulletPos.x -= .5f * Inputs.ShootingHorizontalInput;
+                    bulletPos.y -= .5f * -1f * Inputs.ShootingVerticalInput;
+                }
                 PlayerState.UpdatePlayerState(PlayerInteractionState.Attacking);
-                MirrorShield.Shoot(new Vector2(0, 1));
+                // Generate bullet
+                if (GameObject.FindGameObjectsWithTag("PlayerProjectile").Length < 1) {
+                    GameObject playerBullet = (GameObject)Instantiate(bullet, bulletPos, Quaternion.identity);
+                    playerBullet.tag = "PlayerProjectile";
+                    playerBullet.GetComponent<BulletScript>().speedX = (Inputs.ShootingHorizontalInput * 0.5f);
+                    playerBullet.GetComponent<BulletScript>().speedY = (Inputs.ShootingVerticalInput * -0.5f);
+                }
             }
         }
     }
