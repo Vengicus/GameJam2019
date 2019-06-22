@@ -6,6 +6,7 @@ public class PlayerController : MonoBehaviorExtended
 {
     protected float MovementSpeed = 3;
     public GameObject bullet;
+    Dictionary<string, bool> keys = new Dictionary<string, bool>();
     
     public PlayerWeapon MirrorShield
     {
@@ -19,6 +20,8 @@ public class PlayerController : MonoBehaviorExtended
     void Start()
     {
         PlayerState.InitializePlayerStates();
+        // init key list
+        keys.Add("white", false);
     }
     
     void FixedUpdate()
@@ -78,6 +81,26 @@ public class PlayerController : MonoBehaviorExtended
         Vector2 velocity = new Vector2(Inputs.HorizontalInput, Inputs.VerticalInput) * MovementSpeed;
         
         MoveObjectToNewPosition(velocity);
+    }
+
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.tag == "Key")
+        {
+            KeyScript key = collision.gameObject.GetComponent(typeof(KeyScript)) as KeyScript;
+            //print(key.keyColor);
+            keys[key.keyColor] = true;
+            Destroy(collision.gameObject);
+            //print(keys[key.keyColor]);
+        } else if (collision.gameObject.tag == "Door")
+        {
+            DoorScript door = collision.gameObject.GetComponent(typeof(DoorScript)) as DoorScript;
+            if (keys[door.doorColor])
+            {
+                Destroy(collision.gameObject);
+            }
+        }
     }
 
 }
