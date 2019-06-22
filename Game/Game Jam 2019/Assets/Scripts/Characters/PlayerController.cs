@@ -48,6 +48,9 @@ public class PlayerController : MonoBehaviorExtended
             // Button 1
             if (Inputs.ShootingHorizontalInput != 0 || Inputs.ShootingVerticalInput != 0)
             {
+                // IDEA: for more than one bullet, set a timer
+                // timer is 0 by default. on fire, set timer to a number
+                // each frame, subtract time. when timer is 0 AND bullets < MAX COUNT you can fire again
                 Vector2 bulletPos = transform.position;
                 // generate bullets away from character sprite
                 bulletPos.x += 1.25f * Inputs.ShootingHorizontalInput;
