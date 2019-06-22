@@ -7,6 +7,8 @@ using UnityEngine;
 /// </summary>
 public class GlobalGameManager : MonoBehaviour
 {
+    private const string PLAYER_TAG = "Player";
+
     private static GameState _gameState;
     public static GameState GameState
     {
@@ -15,6 +17,20 @@ public class GlobalGameManager : MonoBehaviour
             return _gameState;
         }
     }
+
+    private static PlayerController _playerObject;
+    public static PlayerController PlayerObject
+    {
+        get
+        {
+            if (_playerObject == null)
+            {
+                _playerObject = GameObject.FindGameObjectWithTag(PLAYER_TAG).GetComponent<PlayerController>();
+            }
+            return _playerObject;
+        }
+    }
+
 
 
     /// <summary>
