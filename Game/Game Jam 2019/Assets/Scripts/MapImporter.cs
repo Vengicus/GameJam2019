@@ -20,7 +20,7 @@ public class MapImporter : MonoBehaviour
 
     void Awake()
     {
-        fileNameToLoad = exampleLevel.txt;
+        fileNameToLoad = "exampleLevel.txt";
         tiles = Load(Application.dataPath + "\\" + fileNameToLoad);
 
         mapWidth = 51;
