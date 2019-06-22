@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DoorScript : MonoBehaviour
+public class KeyScript : MonoBehaviour
 {
-    public string doorColor;
+    public string keyColor;
     // Start is called before the first frame update
     void Start()
     {
