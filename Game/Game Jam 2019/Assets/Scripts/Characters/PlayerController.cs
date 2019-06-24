@@ -91,14 +91,14 @@ public class PlayerController : MonoBehaviorExtended
             KeyScript key = collision.gameObject.GetComponent(typeof(KeyScript)) as KeyScript;
             //print(key.keyColor);
             keys[key.keyColor] = true;
-            Destroy(collision.gameObject);
+            GlobalGameManager.DestroyObject(collision.gameObject);
             //print(keys[key.keyColor]);
         } else if (collision.gameObject.tag == "Door")
         {
             DoorScript door = collision.gameObject.GetComponent(typeof(DoorScript)) as DoorScript;
             if (keys[door.doorColor])
             {
-                Destroy(collision.gameObject);
+                GlobalGameManager.DestroyObject(collision.gameObject);
             }
         }
     }

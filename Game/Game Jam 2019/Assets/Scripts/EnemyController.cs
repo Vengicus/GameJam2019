@@ -4,8 +4,7 @@ using UnityEngine;
 
 public class EnemyController : Vehicle
 {
-
-    private const string OBSTACLE_TAG = "Obstacle";
+    
 
     /// <summary>
     /// Default implementation of Enemy Behavior, by default enemies will seek player, unless overridden in children
@@ -45,7 +44,7 @@ public class EnemyController : Vehicle
             force += Flee(GlobalGameManager.PlayerObject.RigBody.position);
         }
 
-        force += AvoidObstacle(new List<string>() { OBSTACLE_TAG }, 1, 0.5f);
+        force += AvoidObstacle(1);
 
         ApplyForce(force);
     }

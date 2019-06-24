@@ -1,13 +1,14 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 /// <summary>
 /// Global Game Manager: Persists acrossed scenes
 /// </summary>
 public class GlobalGameManager : MonoBehaviour
 {
-    private const string PLAYER_TAG = "Player";
+    public static string PLAYER_TAG = "Player";
 
     private static GameState _gameState;
     public static GameState GameState
@@ -31,6 +32,19 @@ public class GlobalGameManager : MonoBehaviour
         }
     }
 
+    private static List<GameObject> objectsOnScreenWithColliders;
+    public static List<GameObject> ObjectsOnScreenWithColliders
+    {
+        get
+        {
+            if(objectsOnScreenWithColliders == null)
+            {
+                objectsOnScreenWithColliders = GetAllGameObjectsOnScreenWithColliders();
+            }
+            return objectsOnScreenWithColliders;
+        }
+    }
+
 
 
     /// <summary>
@@ -40,6 +54,14 @@ public class GlobalGameManager : MonoBehaviour
     {
         UpdateCurrentGameState(GameState.Gameplay);
         DontDestroyOnLoad(this);
+    }
+
+    /// <summary>
+    /// On start of every new scene
+    /// </summary>
+    private void Start()
+    {
+
     }
 
     /// <summary>
@@ -70,5 +92,63 @@ public class GlobalGameManager : MonoBehaviour
         }
         return objects;
     }
+    
 
+    /// <summary>
+    /// Gets all game objects in a scene
+    /// </summary>
+    /// <returns></returns>
+    public static List<GameObject> GetAllGameObjectsOnScreenWithColliders()
+    {
+        return GetAllGameObjectsOnScreenWithColliders(new List<string>());
+    }
+
+    /// <summary>
+    /// Gets all game objects in a scene, excluding certain tags to ignore
+    /// </summary>
+    /// <param name="tagsToIgnore"></param>
+    /// <returns></returns>
+    public static List<GameObject> GetAllGameObjectsOnScreenWithColliders(List<string> tagsToIgnore)
+    {
+        // Get a list of ALL objects
+        List<GameObject> objects = new List<GameObject>();
+        objects.AddRange(FindObjectsOfType(typeof(GameObject)) as GameObject[]);
+
+        // If we 
+        List<GameObject> objectsToExclude = new List<GameObject>();
+        
+        foreach (string tag in tagsToIgnore)
+        {
+            objectsToExclude.AddRange(objects.Where(obj => obj.tag == tag));
+        }
+
+        // We ONLY want objects with BoxCollider2Ds
+        // We already excluded a certain set of items, we want to add even more objects, we just want objects with BoxColliders
+        objectsToExclude.AddRange(objects.Where(newObj => !objectsToExclude.Any(oldObj => oldObj.Equals(newObj)) 
+                                                            && newObj.GetComponent<BoxCollider2D>() == null));
+        
+
+        foreach(GameObject obj in objectsToExclude)
+        {
+            Debug.Log(obj.name);
+            objects.Remove(obj);
+        }
+
+        return objects;
+    }
+
+    public static void RefreshListingOfObjectsOnScreenWithColliders()
+    {
+        objectsOnScreenWithColliders = GetAllGameObjectsOnScreenWithColliders();
+    }
+
+    /// <summary>
+    /// Safely destroy object! Remove references this object might still be attached to, then remove it
+    /// </summary>
+    /// <param name="objectToDestroy"></param>
+    public static void DestroyObject(GameObject objectToDestroy)
+    {
+        objectsOnScreenWithColliders.Remove(objectToDestroy);
+        Destroy(objectToDestroy);
+    }
 }

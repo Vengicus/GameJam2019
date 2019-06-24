@@ -1,9 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public abstract class Vehicle : MonoBehaviorExtended
 {
+    private const string VECTOR_MANAGEMENT_OBJECT_NAME = "VectorManager";
+
     private GameObject vectorDirectionalObject;
     private Vector2 forwardVector, rightVector;
     private Vector2 previousVelocity = Vector2.zero;
@@ -17,6 +20,30 @@ public abstract class Vehicle : MonoBehaviorExtended
     protected virtual float MaxForce
     {
         get { return 2.5f; }
+    }
+
+    private List<GameObject> allOtherObjectsOnScreen;
+    protected virtual List<GameObject> AllOtherObjectsOnScreen
+    {
+        get
+        {
+            if (allOtherObjectsOnScreen == null)
+            {
+                List<GameObject> allObjects = GlobalGameManager.ObjectsOnScreenWithColliders;
+                
+                // Remove all children of this object from the list to get all others
+                foreach (Transform child in transform)
+                {
+                    allObjects.Remove(child.gameObject);
+                }
+
+                // Remove this object as well (the parent)
+                allObjects.Remove(gameObject);
+
+                allOtherObjectsOnScreen = allObjects;
+            }
+            return allOtherObjectsOnScreen;
+        }
     }
 
 
@@ -35,12 +62,27 @@ public abstract class Vehicle : MonoBehaviorExtended
         get; set;
     }
 
+    /// <summary>
+    /// Get the embedded object handling vector directions
+    /// </summary>
     protected GameObject VectorDirectionalObject
     {
         get
         {
+            // Do we not have one for this object?
             if (vectorDirectionalObject == null)
-                vectorDirectionalObject = transform.Find("vectorManager").gameObject;
+            {
+                // Okay we don't, let's see if we can find if this object has a VectorManager empty gameobject already
+                if (transform.Find(VECTOR_MANAGEMENT_OBJECT_NAME) == null)
+                {
+                    // Okay! Well let's just create a new one as child of this object
+                    GameObject vectorObject = new GameObject(VECTOR_MANAGEMENT_OBJECT_NAME);
+                    vectorObject.transform.parent = transform;
+                }
+                // Okay no matter what we should have a vector managing object
+                vectorDirectionalObject = transform.Find(VECTOR_MANAGEMENT_OBJECT_NAME).gameObject;
+            }
+            // Return that vector object now!
             return vectorDirectionalObject;
         }
     }
@@ -164,26 +206,80 @@ public abstract class Vehicle : MonoBehaviorExtended
     /// <summary>
     /// Vehicle avoids obstacles
     /// </summary>
-    /// <param name="obst"></param>
-    /// <param name="obstRad"></param>
-    /// <param name="safeDistance"></param>
+    /// <param name="safeDistance">Distance at which enemy will begin avoiding obstacle</param>
     /// <returns></returns>
-    protected Vector2 AvoidObstacle(List<string> objectTagsToAvoid, float obstRad, float safeDistance)
+    protected Vector2 AvoidObstacle(float safeDistance)
     {
         Vector2 force = Vector2.zero;
-        List<GameObject> obstaclesToAvoid = GlobalGameManager.FindGameObjectsWithTags(objectTagsToAvoid);
+        List<GameObject> obstaclesToAvoid = AllOtherObjectsOnScreen;
+        // We don't want to avoid player, defeats the purpose
+        obstaclesToAvoid.Remove(GameObject.FindGameObjectWithTag(GlobalGameManager.PLAYER_TAG));
+        
+        // Go through all obstacles we want to avoid
         foreach (GameObject obstacle in obstaclesToAvoid)
         {
-            Vector2 toCenter = obstacle.transform.position - gameObject.transform.position;
+            Vector2 avoidVelocity = Vector2.zero;
+            Vector2 directionToCollision = (obstacle.transform.position - gameObject.transform.position).normalized;
+
+            // Raycast a safe distance away to see if it's going to hit something
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, directionToCollision, safeDistance);
+
+            // Is the vehicle about to hit something???
+            if (hit)
+            {
+                // Is this thing that got hit the obstacle??
+                if (hit.transform != transform && hit.transform.gameObject.Equals(obstacle))
+                {
+                    // Just some vector math
+                    Vector2 playerPos = transform.position;
+                    Vector2 directionOfHit = hit.point - playerPos;
+                    float dotProdToRight = Vector2.Dot(directionOfHit, RightVectorInChild);
+                    float dotProdToForward = Vector2.Dot(directionOfHit, RightVectorInChild);
+                    float distance = Vector2.Distance(hit.point, playerPos);
+                    
+                    // Move to the right!
+                    if (dotProdToRight > 0)
+                    {
+                        avoidVelocity = RightVectorInChild * (-MaxSpeed * safeDistance / (distance / 2));
+                    }
+
+                    //Move to the left!
+                    else
+                    {
+                        avoidVelocity = RightVectorInChild * (MaxSpeed * safeDistance / (distance / 2));
+                    }
+
+                    // God forbid anything bad happens with object avoidance detection, we can't move something if its' vector is malformed, so just make sure we don't have that happen
+                    if(avoidVelocity.x == float.NaN || float.IsInfinity(avoidVelocity.x) || avoidVelocity.y == float.NaN || float.IsInfinity(avoidVelocity.y))
+                    {
+                        avoidVelocity = Vector2.zero;
+                    }
+                }
+            }
+            // Vehicle isn't going to hit anything, we can ignore any obstacle avoidance, cool!
+            else
+            {
+                continue;
+            }
+            
+            // Apply our avoidance!
+            force += avoidVelocity;
+            
+
+            // OLD OBSTACLE AVOIDANCE CODE
+            /*Vector2 toCenter = obstacle.transform.position - gameObject.transform.position;
             float dotProdToCenterRight = Vector2.Dot(toCenter, RightVectorInChild);
             float dotProdToCenterFwd = Vector2.Dot(toCenter, ForwardVectorInChild);
             float distance = Vector2.Distance(obstacle.transform.position, gameObject.transform.position);
+            
 
-            //Obstacle obstacleScript = obst.GetComponent<Obstacle>();
 
-            if ((distance > safeDistance + obstRad) ||
+            Vector3 colliderExtents = obstacle.GetComponent<BoxCollider2D>().bounds.extents;
+            float obstRadius = Vector3.Magnitude(colliderExtents);
+
+            if ((distance > safeDistance + obstRadius) ||
                 (dotProdToCenterFwd < 0) ||
-                (Mathf.Abs(dotProdToCenterRight) > obstRad))
+                (Mathf.Abs(dotProdToCenterRight) > obstRadius))
             {
                 continue;
             }
@@ -200,7 +296,7 @@ public abstract class Vehicle : MonoBehaviorExtended
             {
                 avoidVelocity = RightVectorInChild * (MaxSpeed * safeDistance / distance);
             }
-            force += avoidVelocity;
+            force += avoidVelocity;*/
         }
 
         return force;
