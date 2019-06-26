@@ -44,7 +44,7 @@ public class GlobalGameManager : MonoBehaviour
             return objectsOnScreenWithColliders;
         }
     }
-
+    
 
 
     /// <summary>
@@ -61,7 +61,7 @@ public class GlobalGameManager : MonoBehaviour
     /// </summary>
     private void Start()
     {
-
+        
     }
 
     /// <summary>
