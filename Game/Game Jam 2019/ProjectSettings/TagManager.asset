@@ -7,6 +7,10 @@ TagManager:
   - Door
   - Key
   - PlayerProjectile
+  - Enemy
+  - Tile
+  - Wall
+  - ReloadZone
   layers:
   - Default
   - TransparentFX

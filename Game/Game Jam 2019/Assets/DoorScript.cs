@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class DoorScript : MonoBehaviour
 {
-    public string doorColor;
     // Start is called before the first frame update
     void Start()
     {

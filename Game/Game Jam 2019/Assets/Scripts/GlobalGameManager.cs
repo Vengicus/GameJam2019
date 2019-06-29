@@ -10,6 +10,8 @@ public class GlobalGameManager : MonoBehaviour
 {
     public static string PLAYER_TAG = "Player";
 
+    public static int PlayerLives = 3;
+
     private static GameState _gameState;
     public static GameState GameState
     {
@@ -130,7 +132,6 @@ public class GlobalGameManager : MonoBehaviour
 
         foreach(GameObject obj in objectsToExclude)
         {
-            Debug.Log(obj.name);
             objects.Remove(obj);
         }
 
@@ -150,5 +151,10 @@ public class GlobalGameManager : MonoBehaviour
     {
         objectsOnScreenWithColliders.Remove(objectToDestroy);
         Destroy(objectToDestroy);
+    }
+
+    public static void Nullify()
+    {
+        objectsOnScreenWithColliders = null;
     }
 }

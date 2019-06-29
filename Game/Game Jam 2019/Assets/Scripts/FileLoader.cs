@@ -13,7 +13,7 @@ public static class FileLoader
         {
             if (tilePrefab == null)
             {
-                tilePrefab = Resources.Load("Prefabs/testTile", typeof(GameObject)) as GameObject;
+                tilePrefab = Resources.Load("Prefabs/Tile", typeof(GameObject)) as GameObject;
             }
             return tilePrefab;
         }
@@ -32,16 +32,70 @@ public static class FileLoader
         }
     }
 
-    private static GameObject enemyPrefab;
-    public static GameObject EnemyPrefab
+    private static Dictionary<EnemyType, List<GameObject>> enemyPrefabs;
+    public static Dictionary<EnemyType, List<GameObject>> EnemyPrefabs
     {
         get
         {
-            if (enemyPrefab == null)
+            if (enemyPrefabs == null)
             {
-                enemyPrefab = Resources.Load("Prefabs/Enemy", typeof(GameObject)) as GameObject;
+                enemyPrefabs = new Dictionary<EnemyType, List<GameObject>>();
+                foreach(EnemyType val in System.Enum.GetValues(typeof(EnemyType)))
+                {
+                    enemyPrefabs.Add(val, new List<GameObject>());
+                }
+                List<GameObject> prefabs = new List<GameObject>(Resources.LoadAll("Prefabs/Enemies", typeof(GameObject)).Cast<GameObject>());
+                
+                foreach(GameObject obj in prefabs)
+                {
+                    EnemyController control = obj.GetComponent<EnemyController>();
+                    if (control != null)
+                    {
+                        EnemyType type = control.EnemyType;
+                        enemyPrefabs[type].Add(obj);
+                    }
+                }
             }
-            return enemyPrefab;
+            return enemyPrefabs;
+        }
+    }
+
+    private static GameObject keyPrefab;
+    public static GameObject KeyPrefab
+    {
+        get
+        {
+            if (keyPrefab == null)
+            {
+                keyPrefab = Resources.Load("Prefabs/Key", typeof(GameObject)) as GameObject;
+            }
+            return keyPrefab;
+        }
+    }
+
+    private static GameObject playerBulletPrefab;
+    public static GameObject PlayerBulletPrefab
+    {
+        get
+        {
+            if (playerBulletPrefab == null)
+            {
+                playerBulletPrefab = Resources.Load("Prefabs/Projectiles/PlayerBullet", typeof(GameObject)) as GameObject;
+            }
+            return playerBulletPrefab;
+        }
+    }
+
+    private static GameObject doorPrefab;
+    public static GameObject DoorPrefab
+    {
+        get
+        {
+            if (doorPrefab == null)
+            {
+                doorPrefab = Resources.Load("Prefabs/Door", typeof(GameObject)) as GameObject;
+            }
+            return doorPrefab;
         }
     }
 
@@ -70,7 +124,7 @@ public static class FileLoader
     public static List<string> ReadFileAllLines(string pathToFile)
     {
         List<string> output = new List<string>();
-        using(StreamReader reader = new StreamReader(pathToFile))
+        using (StreamReader reader = new StreamReader(pathToFile))
         {
             string data = reader.ReadToEnd();
             reader.Close();
@@ -78,4 +132,27 @@ public static class FileLoader
         }
         return output;
     }
+
+    public static GameObject GetRandomEnemyPrefab(EnemyType type)
+    {
+        if (EnemyPrefabs != null && EnemyPrefabs.Count > 0 && EnemyPrefabs[type] != null)
+        {
+            List<GameObject> applicableEnemies = EnemyPrefabs[type];
+            int randomEnemyIndex = Random.Range(0, applicableEnemies.Count);
+            return applicableEnemies[randomEnemyIndex];
+        }
+        return new GameObject("ERROR NO PREFABS FOUND");
+    }
+    
+
+    /*
+    public static List<string> GetOnlyLevelData(this List<string> data)
+    {
+        return data.Where(line => !line.Contains("=")).ToList();
+    }
+
+    public static string GetTextFileAttribute(this List<string> data, string attributeName)
+    {
+        return data.Where(line => line.Contains(attributeName)).First().Split('=')[1].Trim();
+    }*/
 }

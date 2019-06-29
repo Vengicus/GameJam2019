@@ -4,8 +4,12 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviorExtended
 {
+    private const int MAX_AMMO = 3;
+
+    public int Health = 3;
+    public int Ammo = 3;
+
     protected float MovementSpeed = 3;
-    public GameObject bullet;
     Dictionary<string, bool> keys = new Dictionary<string, bool>();
     
     public PlayerWeapon MirrorShield
@@ -13,6 +17,32 @@ public class PlayerController : MonoBehaviorExtended
         get
         {
             return transform.GetComponentInChildren<PlayerWeapon>();
+        }
+    }
+
+    private PlayerInventory inventory;
+    public PlayerInventory Inventory
+    {
+        get
+        {
+            if(inventory == null)
+            {
+                inventory = GetComponent<PlayerInventory>();
+            }
+            return inventory;
+        }
+    }
+
+    private LevelManager levelManager;
+    public LevelManager LevelManager
+    {
+        get
+        {
+            if(levelManager == null)
+            {
+                levelManager = GameObject.Find("LevelManager").GetComponent<LevelManager>();
+            }
+            return levelManager;
         }
     }
 
@@ -26,11 +56,21 @@ public class PlayerController : MonoBehaviorExtended
     
     void FixedUpdate()
     {
+        UpdatePlayerAura();
         HandlePlayerInteraction();
 
         // No need to run this logic if player isn't even moving
         if(PlayerState.PlayerMovementState != PlayerMovementState.Idle)
             HandlePlayerMovement();
+    }
+
+    protected void UpdatePlayerAura()
+    {
+        GameObject currentCenteredCollider = Physics2D.OverlapPoint(transform.position)?.gameObject;
+        if (currentCenteredCollider != null && (currentCenteredCollider.tag == Tags.TILE || currentCenteredCollider.tag == Tags.RELOAD_ZONE))
+        {
+            LevelManager.Level.EmitPlayerAura(currentCenteredCollider.GetComponent<Tile>());
+        }
     }
 
     protected void HandlePlayerInteraction()
@@ -51,27 +91,9 @@ public class PlayerController : MonoBehaviorExtended
             // Button 1
             if (Inputs.ShootingHorizontalInput != 0 || Inputs.ShootingVerticalInput != 0)
             {
-                // IDEA: for more than one bullet, set a timer
-                // timer is 0 by default. on fire, set timer to a number
-                // each frame, subtract time. when timer is 0 AND bullets < MAX COUNT you can fire again
-                Vector2 bulletPos = transform.position;
-                // generate bullets away from character sprite
-                bulletPos.x += 1.25f * Inputs.ShootingHorizontalInput;
-                bulletPos.y += 1.25f * -1f * Inputs.ShootingVerticalInput;
-                // reduces distance for diagonals
-                if (Inputs.ShootingHorizontalInput != 0 && Inputs.ShootingVerticalInput != 0)
-                {
-                    bulletPos.x -= .5f * Inputs.ShootingHorizontalInput;
-                    bulletPos.y -= .5f * -1f * Inputs.ShootingVerticalInput;
-                }
-                PlayerState.UpdatePlayerState(PlayerInteractionState.Attacking);
-                // Generate bullet
-                if (GameObject.FindGameObjectsWithTag("PlayerProjectile").Length < 1) {
-                    GameObject playerBullet = (GameObject)Instantiate(bullet, bulletPos, Quaternion.identity);
-                    playerBullet.tag = "PlayerProjectile";
-                    playerBullet.GetComponent<BulletScript>().speedX = (Inputs.ShootingHorizontalInput * 0.5f);
-                    playerBullet.GetComponent<BulletScript>().speedY = (Inputs.ShootingVerticalInput * -0.5f);
-                }
+                // Only shoot bullet once, once the player already shot allow corouting to handle when player can shoot again
+                if(PlayerState.PlayerInteractionState != PlayerInteractionState.Attacking)
+                    ShootBullet();
             }
         }
     }
@@ -79,28 +101,93 @@ public class PlayerController : MonoBehaviorExtended
     protected void HandlePlayerMovement()
     {
         Vector2 velocity = new Vector2(Inputs.HorizontalInput, Inputs.VerticalInput) * MovementSpeed;
-        
         MoveObjectToNewPosition(velocity);
+        
     }
 
+    protected void ShootBullet()
+    {
+        if (Ammo > 0)
+        {
+            PlayerState.UpdatePlayerState(PlayerInteractionState.Attacking);
 
+            GameObject playerBullet = Instantiate(FileLoader.PlayerBulletPrefab, transform.position, Quaternion.identity);
+            playerBullet.tag = "PlayerProjectile";
+            playerBullet.transform.parent = transform;
+            BulletScript script = playerBullet.GetComponent<BulletScript>();
+            script.Velocity = new Vector2(Inputs.ShootingHorizontalInput, -Inputs.ShootingVerticalInput);
+            Ammo--;
+        }
+    }
+
+    public void TakeDamage(int damage)
+    {
+        if(PlayerState.PlayerStatusState == PlayerStatusState.Fine)
+        {
+            PlayerState.PlayerStatusState = PlayerStatusState.Hurt;
+            Health -= damage;
+            if (Health <= 0)
+            {
+                KillPlayer();
+            }
+            StartCoroutine(TriggerTempInvulnerability());
+        }
+    }
+
+    private void KillPlayer()
+    {
+        GlobalGameManager.PlayerLives--;
+        if (GlobalGameManager.PlayerLives > 0)
+        {
+            // allow user to restart, or return to main menu, for now just auto restart
+            LevelManager.LoadNewLevel();
+        }
+        else
+        {
+            // send back to menu, show game over etc
+        }
+    }
+    
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.gameObject.tag == "Key")
         {
-            KeyScript key = collision.gameObject.GetComponent(typeof(KeyScript)) as KeyScript;
-            //print(key.keyColor);
-            keys[key.keyColor] = true;
+            Inventory.AddItemToInventory(FileLoader.KeyPrefab);
             GlobalGameManager.DestroyObject(collision.gameObject);
-            //print(keys[key.keyColor]);
-        } else if (collision.gameObject.tag == "Door")
-        {
-            DoorScript door = collision.gameObject.GetComponent(typeof(DoorScript)) as DoorScript;
-            if (keys[door.doorColor])
-            {
-                GlobalGameManager.DestroyObject(collision.gameObject);
-            }
         }
+        else if (collision.gameObject.tag == "Door")
+        {
+            if(Inventory.HasItemInInventory(FileLoader.KeyPrefab))
+            {
+                Inventory.RemoveItemFromInventory(FileLoader.KeyPrefab);
+                GameObject parent = collision.transform.parent.gameObject;
+                parent.SetActive(false);
+                StartCoroutine(StartNewLevel());
+            }
+            
+        }
+        
+    }
+
+    private void OnTriggerStay2D(Collider2D collision)
+    {
+        if (collision.gameObject.tag == Tags.RELOAD_ZONE)
+        {
+            Ammo = MAX_AMMO;
+        }
+    }
+
+    IEnumerator TriggerTempInvulnerability()
+    {
+        yield return new WaitForSeconds(1f);
+        PlayerState.PlayerStatusState = PlayerStatusState.Fine;
+    }
+
+
+    IEnumerator StartNewLevel()
+    {
+        yield return new WaitForSeconds(1f);
+        LevelManager.LoadNewLevel();
     }
 
 }

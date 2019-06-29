@@ -263,7 +263,7 @@ public abstract class Vehicle : MonoBehaviorExtended
             }
             
             // Apply our avoidance!
-            force += avoidVelocity;
+            force += avoidVelocity * MaxSpeed;
             
 
             // OLD OBSTACLE AVOIDANCE CODE
